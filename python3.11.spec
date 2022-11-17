@@ -96,6 +96,9 @@ License: Python-2.0.1
 %bcond_with valgrind
 %endif
 
+# Build with the clang compiler
+%bcond_with toolchain_clang
+
 # =====================
 # General global macros
 # =====================
@@ -105,6 +108,10 @@ License: Python-2.0.1
 %else
 %global pkgname python%{pybasever}
 %global exename python%{pybasever}
+%endif
+
+%if %{with toolchain_clang}
+%global toolchain clang
 %endif
 
 %global pylibdir %{_libdir}/python%{pybasever}
@@ -185,6 +192,10 @@ BuildRequires: autoconf
 BuildRequires: bluez-libs-devel
 BuildRequires: bzip2
 BuildRequires: bzip2-devel
+%if %{with toolchain_clang}
+BuildRequires: clang
+BuildRequires: compiler-rt
+%endif
 BuildRequires: desktop-file-utils
 BuildRequires: expat-devel
 
@@ -322,6 +333,10 @@ Patch328: 00328-pyc-timestamp-invalidation-mode.patch
 # https://bodhi.fedoraproject.org/updates/FEDORA-2021-e152ce5f31
 # https://github.com/GrahamDumpleton/mod_wsgi/issues/730
 Patch371: 00371-revert-bpo-1596321-fix-threading-_shutdown-for-the-main-thread-gh-28549-gh-28589.patch
+
+# 00394 # ff6d9aeec33689d166474733eb01bb8f700e9b36
+# Fix build process of the clang compiler for _bootstrap_python (gh-96945)
+Patch394: 00394-fix-clang-lto-build-gh-96761.patch
 
 # (New patches go here ^^^)
 #
@@ -674,12 +689,13 @@ topdir=$(pwd)
 # Standard library built here will still use the %%build_...flags,
 # Fedora packages utilizing %%py3_build will use them as well
 # https://fedoraproject.org/wiki/Changes/Python_Extension_Flags
+export CC="%{build_cc}"
 export CFLAGS="%{extension_cflags} -D_GNU_SOURCE -fPIC -fwrapv"
 export CFLAGS_NODIST="%{build_cflags} -D_GNU_SOURCE -fPIC -fwrapv"
 export CXXFLAGS="%{extension_cxxflags} -D_GNU_SOURCE -fPIC -fwrapv"
 export CPPFLAGS="$(pkg-config --cflags-only-I libffi)"
 export OPT="%{extension_cflags} -D_GNU_SOURCE -fPIC -fwrapv"
-export LINKCC="gcc"
+export LINKCC="%{build_cc}"
 export CFLAGS="$CFLAGS $(pkg-config --cflags openssl)"
 export LDFLAGS="%{extension_ldflags} -g $(pkg-config --libs-only-L openssl)"
 export LDFLAGS_NODIST="%{build_ldflags} -g $(pkg-config --libs-only-L openssl)"
